@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <title>Cloud Vulnerability Scanner</title>
@@ -13,147 +14,161 @@
         }
     </style>
 </head>
+
 <body class="bg-light">
 
-<div class="container mt-5 mb-5">
+    <div class="container mt-5 mb-5">
 
-    <h1 class="mb-4 text-center">☁️ Cloud Vulnerability Scanner</h1>
+        <h1 class="mb-4 text-center">☁️ Cloud Vulnerability Scanner</h1>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
         {% for category, message in messages %}
-          <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
             {{ message }}
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-          </div>
-        {% endfor %}
-      {% endif %}
-    {% endwith %}
-
-    <!-- Scan Form -->
-    <form action="/scan" method="post" class="mb-4">
-        <input type="hidden" name="scan_type" id="scan_type">
-        <input type="text" name="access_key" placeholder="AWS Access Key" class="form-control mb-2" required>
-        <input type="password" name="secret_key" placeholder="AWS Secret Key" class="form-control mb-2" required>
-        <input type="text" name="region" placeholder="AWS Region (e.g., us-east-1)" class="form-control mb-2" required>
-
-        <div class="d-flex flex-wrap gap-2">
-            <button type="submit" class="btn btn-primary" onclick="setScanType('s3')">🔍 Scan S3</button>
-            <button type="submit" class="btn btn-warning" onclick="setScanType('ec2')">🛡️ Scan EC2</button>
-            <button type="submit" class="btn btn-info" onclick="setScanType('iam')">👤 Scan IAM</button>
-            <button type="submit" class="btn btn-success" onclick="setScanType('rds')">📦 Scan RDS</button>
-            <button type="submit" class="btn btn-secondary" onclick="setScanType('ebs')">💾 Scan EBS</button>
-            <button type="submit" class="btn btn-dark" onclick="setScanType('all')">🔁 Full Scan</button>
         </div>
-    </form>
-    
-    
+        {% endfor %}
+        {% endif %}
+        {% endwith %}
 
-    <!-- Scan Summary -->
-    {% if all_results and all_results|length > 0 %}
-    <div class="card mb-4">
-        <div class="card-body text-center">
-            <h4 class="card-title mb-3">📊 Vulnerability Summary</h4>
-            <div class="chart-container">
-                <canvas id="summaryChart"></canvas>
+        <!-- Scan Form -->
+        <form action="/scan" method="post" class="mb-4">
+            <input type="hidden" name="scan_type" id="scan_type">
+            <input type="text" name="access_key" placeholder="AWS Access Key" class="form-control mb-2" required>
+            <input type="password" name="secret_key" placeholder="AWS Secret Key" class="form-control mb-2" required>
+            <input type="text" name="region" placeholder="AWS Region (e.g., us-east-1)" class="form-control mb-2"
+                required>
+
+            <div class="d-flex flex-wrap gap-2">
+                <button type="submit" class="btn btn-primary" onclick="setScanType('s3')">🔍 Scan S3</button>
+                <button type="submit" class="btn btn-warning" onclick="setScanType('ec2')">🛡️ Scan EC2</button>
+                <button type="submit" class="btn btn-info" onclick="setScanType('iam')">👤 Scan IAM</button>
+                <button type="submit" class="btn btn-success" onclick="setScanType('rds')">📦 Scan RDS</button>
+                <button type="submit" class="btn btn-secondary" onclick="setScanType('ebs')">💾 Scan EBS</button>
+                <button type="submit" class="btn btn-dark" onclick="setScanType('all')">🔁 Full Scan</button>
+            </div>
+        </form>
+
+
+
+        <!-- Scan Summary -->
+        {% if all_results and all_results|length > 0 %}
+        <div class="card mb-4">
+            <div class="card-body text-center">
+                <h4 class="card-title mb-3">📊 Vulnerability Summary</h4>
+                <div class="chart-container">
+                    <canvas id="summaryChart"></canvas>
+                </div>
             </div>
         </div>
-    </div>
 
-    <!-- Vulnerability List -->
-    <div class="card">
-        <div class="card-body">
-            <h4 class="card-title">📋 Scan Results</h4>
+        <!-- Vulnerability List -->
+        <div class="card">
+            <div class="card-body">
+                <h4 class="card-title">📋 Scan Results</h4>
 
-{% set descriptions = {
-    "S3": "Scans for S3 buckets that are publicly accessible or missing encryption, which could expose or compromise stored data.",
-    "EC2": "Analyzes EC2 security groups for overly permissive rules such as open ports, unrestricted access (0.0.0.0/0), or ping (ICMP) exposure.",
-    "IAM": "Checks IAM users for weak configurations such as lack of MFA, overly old access keys, or missing identity tags for auditing.",
-    "RDS": "Evaluates RDS databases for public accessibility and unencrypted storage, which could risk database exposure or non-compliance.",
-    "EBS": "Detects unattached or unencrypted EBS volumes, and flags volumes that may be costing money without being in use."
-} %}
+                {% set descriptions = {
+                "S3": "Scans for S3 buckets that are publicly accessible or missing encryption, which could expose or
+                compromise stored data.",
+                "EC2": "Analyzes EC2 security groups for overly permissive rules such as open ports, unrestricted access
+                (0.0.0.0/0), or ping (ICMP) exposure.",
+                "IAM": "Checks IAM users for weak configurations such as lack of MFA, overly old access keys, or missing
+                identity tags for auditing.",
+                "RDS": "Evaluates RDS databases for public accessibility and unencrypted storage, which could risk
+                database exposure or non-compliance.",
+                "EBS": "Detects unattached or unencrypted EBS volumes, and flags volumes that may be costing money
+                without being in use."
+                } %}
 
-<ul class="list-group mt-3">
-    {% for result in all_results %}
-    {% if loop.first or result.source != all_results[loop.index0 - 1].source %}
-        <li class="list-group-item bg-light fw-bold">
-            {{ result.source }} Scan
-            <div class="small text-muted">{{ descriptions[result.source] }}</div>
-        </li>
-    {% endif %}
-    <li class="list-group-item d-flex justify-content-between align-items-center">
-        {{ result.issue }}
-        <span class="badge 
+                <ul class="list-group mt-3">
+                    {% for result in all_results %}
+                    {% if loop.first or result.source != all_results[loop.index0 - 1].source %}
+                    <li class="list-group-item bg-light fw-bold">
+                        {{ result.source }} Scan
+                        <div class="small text-muted">{{ descriptions[result.source] }}</div>
+                    </li>
+                    {% endif %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        {{ result.issue }}
+                        <span class="badge 
             {% if result.severity == 'Critical' %} bg-danger
             {% elif result.severity == 'High' %} bg-warning text-dark
             {% elif result.severity == 'Medium' %} bg-info text-dark
             {% elif result.severity == 'Low' %} bg-success
             {% else %} bg-secondary
             {% endif %}">
-            {{ result.severity }}
-        </span>
-    </li>
+                            {{ result.severity }}
+                        </span>
+                    </li>
 
-    {% endfor %}
-</ul>
+                    {% endfor %}
+                </ul>
 
+            </div>
         </div>
+        {% else %}
+        {% if all_results is defined and all_results|length == 0 %}
+        <div class="alert alert-success text-center mt-4">
+            ✅ Scan complete. No vulnerabilities found.
+        </div>
+        {% endif %}
+        {% endif %}
+        {% if all_results and all_results|length > 0 %}
+        <div class="text-end mt-3">
+            <a href="{{ url_for('routes.export_pdf') }}" class="btn btn-outline-dark">📄 Download Report</a>
+        </div>
+        {% endif %}
+
+
     </div>
-    {% else %}
-  {% if all_results is defined and all_results|length == 0 %}
-    <div class="alert alert-success text-center mt-4">
-        ✅ Scan complete. No vulnerabilities found.
-    </div>
-  {% endif %}
-{% endif %}
 
-
-</div>
-
-<script>
-function setScanType(type) {
-    document.getElementById('scan_type').value = type;
-}
-</script>
-
-{% if all_results and all_results|length > 0 %}
-<script>
-    const data = JSON.parse(`{{ all_results | tojson | safe }}`);
-    const counts = { Critical: 0, High: 0, Medium: 0, Low: 0 };
-
-    data.forEach(item => {
-        if (counts[item.severity] !== undefined) {
-            counts[item.severity]++;
+    <script>
+        function setScanType(type) {
+            document.getElementById('scan_type').value = type;
         }
-    });
+    </script>
 
-    const ctx = document.getElementById('summaryChart').getContext('2d');
-    new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: Object.keys(counts),
-            datasets: [{
-                data: Object.values(counts),
-                backgroundColor: ['#dc3545', '#ffc107', '#0dcaf0', '#198754'],
-                borderColor: '#fff',
-                borderWidth: 2
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: { position: 'bottom' },
-                title: {
-                    display: true,
-                    text: 'Severity Distribution'
+    {% if all_results and all_results|length > 0 %}
+    <script>
+        const data = JSON.parse(`{{ all_results | tojson | safe }}`);
+        const counts = { Critical: 0, High: 0, Medium: 0, Low: 0 };
+
+        data.forEach(item => {
+            if (counts[item.severity] !== undefined) {
+                counts[item.severity]++;
+            }
+        });
+
+
+        const ctx = document.getElementById('summaryChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: Object.keys(counts),
+                datasets: [{
+                    data: Object.values(counts),
+                    backgroundColor: ['#dc3545', '#ffc107', '#0dcaf0', '#198754'],
+                    borderColor: '#fff',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: 'bottom' },
+                    title: {
+                        display: true,
+                        text: 'Severity Distribution'
+                    }
                 }
             }
-        }
-    });
-</script>
-{% endif %}
+        });
+    </script>
+    {% endif %}
 
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
+
 </html>
