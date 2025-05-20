@@ -23,9 +23,9 @@ def add_severity(data, severity, source):
 
 @routes_bp.route('/scan', methods=['POST'])
 def scan():
-    access_key = request.form.get('access_key')
-    secret_key = request.form.get('secret_key')
-    region = request.form.get('region')
+    access_key = request.form.get('access_key', "").strip()
+    secret_key = request.form.get('secret_key', "").strip()
+    region = request.form.get('region', "").strip()
     scan_type = request.form.get('scan_type')
 
     if not access_key or not secret_key or not region or not scan_type:
