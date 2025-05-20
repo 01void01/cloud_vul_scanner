@@ -1,10 +1,10 @@
-from flask import Blueprint, render_template, request, flash, redirect, url_for, session, make_response  # 🆕
+from flask import Blueprint, render_template, request, flash, redirect, url_for, session, make_response
 from app.scanners import s3_scanner, ec2_scanner, iam_scanner, rds_scanner, ebs_scanner
 import boto3
 from botocore.exceptions import NoCredentialsError
-from xhtml2pdf import pisa  # 🆕
+from xhtml2pdf import pisa  
 
-import io  # 🆕
+import io
 
 routes_bp = Blueprint('routes', __name__)
 
