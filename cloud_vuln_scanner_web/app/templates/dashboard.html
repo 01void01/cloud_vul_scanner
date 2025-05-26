@@ -12,13 +12,16 @@
             max-width: 400px;
             margin: 0 auto;
         }
+
+        .mb-4 {
+            margin-top: 1.5rem !important;
+            margin-bottom: 1.5rem !important;
+        }
     </style>
 </head>
 
 <body class="bg-light">
-
     <div class="container mt-5 mb-5">
-
         <h1 class="mb-4 text-center">☁️ Cloud Vulnerability Scanner</h1>
 
         {% with messages = get_flashed_messages(with_categories=true) %}
@@ -39,21 +42,30 @@
             <input type="password" name="secret_key" placeholder="AWS Secret Key" class="form-control mb-2" required>
             <input type="text" name="region" placeholder="AWS Region (e.g., us-east-1)" class="form-control mb-2"
                 required>
-
             <div class="d-flex flex-wrap gap-2">
-                <button type="submit" class="btn btn-primary" onclick="setScanType('s3')">🔍 Scan S3</button>
-                <button type="submit" class="btn btn-warning" onclick="setScanType('ec2')">🛡️ Scan EC2</button>
-                <button type="submit" class="btn btn-info" onclick="setScanType('iam')">👤 Scan IAM</button>
-                <button type="submit" class="btn btn-success" onclick="setScanType('rds')">📦 Scan RDS</button>
-                <button type="submit" class="btn btn-secondary" onclick="setScanType('ebs')">💾 Scan EBS</button>
-                <button type="submit" class="btn btn-dark" onclick="setScanType('all')">🔁 Full Scan</button>
+                <button type="submit"
+                    title="Scans for S3 buckets that are publicly accessible or missing encryption, which could expose or compromise stored data."
+                    class="btn btn-primary" onclick="setScanType('s3')">🔍 Scan S3</button>
+                <button type="submit"
+                    title="Analyzes EC2 security groups for overly permissive rules such as open ports, unrestricted access (0.0.0.0/0), or ping (ICMP) exposure."
+                    class="btn btn-warning" onclick="setScanType('ec2')">🛡️ Scan EC2</button>
+                <button type="submit"
+                    title="Checks IAM users for weak configurations such as lack of MFA, overly old access keys, or missing identity tags for auditing."
+                    class="btn btn-info" onclick="setScanType('iam')">👤 Scan IAM</button>
+                <button type="submit"
+                    title="Evaluates RDS databases for public accessibility and unencrypted storage, which could risk database exposure or non-compliance."
+                    class="btn btn-success" onclick="setScanType('rds')">📦 Scan RDS</button>
+                <button type="submit"
+                    title="Detects unattached or unencrypted EBS volumes, and flags volumes that may be costing money without being in use."
+                    class="btn btn-secondary" onclick="setScanType('ebs')">💾 Scan EBS</button>
+                <button type="submit" title="Scans S3, EC2, IAM, RDS and EBS all at one click." class="btn btn-dark"
+                    onclick="setScanType('all')">🔁 Full Scan</button>
             </div>
         </form>
 
-
-
-        <!-- Scan Summary -->
         {% if all_results and all_results|length > 0 %}
+
+        <!-- Chart -->
         <div class="card mb-4">
             <div class="card-body text-center">
                 <h4 class="card-title mb-3">📊 Vulnerability Summary</h4>
@@ -63,49 +75,222 @@
             </div>
         </div>
 
-        <!-- Vulnerability List -->
-        <div class="card">
+        <!-- Summary Cards -->
+        <div class="row row-cols-2 row-cols-md-5 g-3 text-center mb-4">
+            {% set severity_counts = {'Critical': 0, 'High': 0, 'Medium': 0, 'Low': 0} %}
+            {% for item in all_results %}
+            {% if item.severity in severity_counts %}
+            {% set _ = severity_counts.__setitem__(item.severity, severity_counts[item.severity] + 1) %}
+            {% endif %}
+            {% endfor %}
+            {% set total = all_results | length %}
+
+            <div class="col">
+                <div class="card text-white bg-dark shadow-sm">
+                    <div class="card-body p-2">
+                        <small>Total Issues</small>
+                        <h4>{{ total }}</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="card text-white bg-danger shadow-sm">
+                    <div class="card-body p-2">
+                        <small>Critical</small>
+                        <h4>{{ severity_counts['Critical'] }}</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="card text-dark bg-warning shadow-sm">
+                    <div class="card-body p-2">
+                        <small>High</small>
+                        <h4>{{ severity_counts['High'] }}</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="card text-white bg-info shadow-sm">
+                    <div class="card-body p-2">
+                        <small>Medium</small>
+                        <h4>{{ severity_counts['Medium'] }}</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="card text-white bg-success shadow-sm">
+                    <div class="card-body p-2">
+                        <small>Low</small>
+                        <h4>{{ severity_counts['Low'] }}</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Vulnerability Sections -->
+        <div class="card mb-4">
             <div class="card-body">
                 <h4 class="card-title">📋 Scan Results</h4>
 
+                {% set service_groups = ['S3', 'EC2', 'IAM', 'RDS', 'EBS'] %}
                 {% set descriptions = {
-                "S3": "Scans for S3 buckets that are publicly accessible or missing encryption, which could expose or
-                compromise stored data.",
-                "EC2": "Analyzes EC2 security groups for overly permissive rules such as open ports, unrestricted access
-                (0.0.0.0/0), or ping (ICMP) exposure.",
-                "IAM": "Checks IAM users for weak configurations such as lack of MFA, overly old access keys, or missing
-                identity tags for auditing.",
-                "RDS": "Evaluates RDS databases for public accessibility and unencrypted storage, which could risk
-                database exposure or non-compliance.",
-                "EBS": "Detects unattached or unencrypted EBS volumes, and flags volumes that may be costing money
-                without being in use."
+                    'is publicly accessible': 'The resource is exposed to the public internet.',
+                    'has logging disabled': 'Access logs are not enabled for this resource.',
+                    'logging disabled': 'Access logs are not enabled for this resource.',
+                    'publicly accessible': 'The resource is exposed to the public internet.',
+                    'no mfa': 'MFA is not enabled, increasing identity compromise risk.',
+                    'access key older than 90 days': 'Old keys increase risk of compromise.',
+                    'no iam tags': 'Untagged identities reduce auditability.',
+                    'not encrypted': 'The resource is not encrypted at rest.',
+                    'unattached': 'Unattached resources may be idle and incurring cost.',
+                    'snapshot': 'Snapshot may expose data if shared improperly.',
+                    'publicly accessible rds': 'RDS instance is open to the public internet.'
+                } %}
+                {% set remediations = {
+                    'is publicly accessible': 'Restrict access via IAM policies, VPC, or bucket ACLs.',
+                    'has logging disabled': 'Enable access logs from the resource settings page.',
+                    'logging disabled': 'Enable access logs from the resource settings page.',
+                    'publicly accessible': 'Restrict access via IAM policies, VPC, or bucket ACLs.',
+                    'no mfa': 'Assign virtual/hardware MFA via IAM > Security Credentials.',
+                    'access key older than 90 days': 'Rotate the key and remove the old one securely.',
+                    'no iam tags': 'Add tags (e.g., Owner, Purpose) in the IAM console.',
+                    'not encrypted': 'Enable encryption using SSE-S3 or KMS (for EBS, S3, RDS).',
+                    'unattached': 'Delete or snapshot unused resources to reduce cost.',
+                    'snapshot': 'Review and secure or delete unnecessary snapshots.',
+                    'publicly accessible rds': 'Modify RDS to disable public access and limit via security groups.'
                 } %}
 
-                <ul class="list-group mt-3">
-                    {% for result in all_results %}
-                    {% if loop.first or result.source != all_results[loop.index0 - 1].source %}
-                    <li class="list-group-item bg-light fw-bold">
-                        {{ result.source }} Scan
-                        <div class="small text-muted">{{ descriptions[result.source] }}</div>
-                    </li>
-                    {% endif %}
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        {{ result.issue }}
-                        <span class="badge 
-            {% if result.severity == 'Critical' %} bg-danger
-            {% elif result.severity == 'High' %} bg-warning text-dark
-            {% elif result.severity == 'Medium' %} bg-info text-dark
-            {% elif result.severity == 'Low' %} bg-success
-            {% else %} bg-secondary
-            {% endif %}">
-                            {{ result.severity }}
-                        </span>
-                    </li>
-
+                <div class="accordion mt-4" id="resultsAccordion">
+                    {% for service in service_groups %}
+                        {% set outer_index = loop.index %}
+                        {% set service_results = all_results | selectattr("source", "equalto", service) | list %}
+                        {% if service_results %}
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="heading{{ outer_index }}">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                                        data-bs-target="#collapse{{ outer_index }}" aria-expanded="false"
+                                        aria-controls="collapse{{ outer_index }}">
+                                        🔍 {{ service }} Findings ({{ service_results | length }})
+                                    </button>
+                                </h2>
+                                <div id="collapse{{ outer_index }}" class="accordion-collapse collapse"
+                                     aria-labelledby="heading{{ outer_index }}" data-bs-parent="#resultsAccordion">
+                                    <div class="accordion-body p-0">
+                                        <div class="table-responsive">
+                                            <table class="table table-striped m-0 align-middle">
+                                                <thead class="table-light">
+                                                    <tr>
+                                                        <th>Vulnerability</th>
+                                                        <th>Severity</th>
+                                                        <th>Description</th>
+                                                        <th>Remediation</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% for result in service_results %}
+                                                        {% set issue_text = result.issue | lower %}
+                                                        <tr>
+                                                            <td>
+                                                                <code>{{ result.issue }}</code>
+                                            </td>
+                                                            <td>
+                                                                <span class="badge
+                                                                  {% if result.severity == 'Critical' %}bg-danger
+                                                                  {% elif result.severity == 'High' %}bg-warning text-dark
+                                                                  {% elif result.severity == 'Medium' %}bg-info text-dark
+                                                                  {% elif result.severity == 'Low' %}bg-success
+                                                                  {% else %}bg-secondary{% endif %}">
+                                                                  {{ result.severity }}
+                                                                </span>
+                                                            </td>
+                                                            <td>
+                                                                {% if 'is publicly accessible' in issue_text %}
+                                                                    S3 buckets exposed to the public internet can lead to data breaches and unauthorized access.
+                                                                {% elif 'has logging disabled' in issue_text %}
+                                                                    Without access logs, it's difficult to monitor and audit S3 bucket activity for security incidents.
+                                                                {% elif 'publicly accessible' in issue_text %}
+                                                                    The resource is exposed to the public internet, increasing attack surface.
+                                                                {% elif 'logging disabled' in issue_text %}
+                                                                    Access logs are not enabled, reducing visibility into resource usage and potential security events.
+                                                                {% elif 'has no mfa' in issue_text %}
+                                                                    IAM user accounts without MFA are vulnerable to credential theft.
+                                                                {% elif 'no mfa' in issue_text %}
+                                                                    MFA is not enabled, increasing identity compromise risk.
+                                                                {% elif 'has access key older than 90 days' in issue_text %}
+                                                                    Old access keys increase the risk of long-term credential leaks.
+                                                                {% elif 'access key older than 90 days' in issue_text %}
+                                                                    Old keys increase risk of compromise and should be rotated regularly.
+                                                                {% elif 'has no iam tags' in issue_text %}
+                                                                    Untagged users make it harder to track ownership, purpose, or cost allocation.
+                                                                {% elif 'no iam tags' in issue_text %}
+                                                                    Untagged identities reduce auditability and compliance tracking.
+                                                                {% elif 'not encrypted' in issue_text %}
+                                                                    The resource is not encrypted at rest, potentially exposing sensitive data.
+                                                                {% elif 'unattached' in issue_text %}
+                                                                    Unattached resources may be idle and incurring unnecessary costs.
+                                                                {% elif 'snapshot' in issue_text %}
+                                                                    Snapshot may expose data if shared improperly or left unencrypted.
+                                                                {% else %}
+                                                                    No description available.
+                                                                {% endif %}
+                                                            </td>
+                                                            <td>
+                                                                <button class="btn btn-sm btn-outline-primary" type="button"
+                                                                        data-bs-toggle="collapse"
+                                                                        data-bs-target="#fix_{{ service | lower }}_{{ outer_index }}_{{ loop.index }}">
+                                                                    View Fix
+                                                                </button>
+                                                                <div class="collapse mt-2"
+                                                                     id="fix_{{ service | lower }}_{{ outer_index }}_{{ loop.index }}">
+                                                                    <div class="card card-body bg-light small text-start">
+                                                                        {% if 'is publicly accessible' in issue_text %}
+                                                                            Go to AWS S3 > Buckets > [Bucket Name] > "Permissions", and review bucket policy, ACLs, and public access settings. Use IAM policies and VPC endpoints to restrict access to authorized users only.
+                                                                        {% elif 'has logging disabled' in issue_text %}
+                                                                            Go to AWS S3 > Buckets > [Bucket Name] > "Properties" > "Server access logging", and enable logging to track access requests. Configure log delivery to a separate S3 bucket for security monitoring.
+                                                                        {% elif 'publicly accessible' in issue_text %}
+                                                                            Restrict access via IAM policies, VPC configurations, or resource-specific access controls. Review and remove unnecessary public permissions.
+                                                                        {% elif 'logging disabled' in issue_text %}
+                                                                            Enable access logs from the resource settings page to improve monitoring and compliance tracking.
+                                                                        {% elif 'has no mfa' in issue_text %}
+                                                                            Go to AWS IAM > Users > [User] > "Security Credentials", and assign a virtual or hardware MFA device. Enforce MFA using IAM policies where needed.
+                                                                        {% elif 'no mfa' in issue_text %}
+                                                                            Assign virtual/hardware MFA via IAM > Security Credentials and enforce through conditional policies.
+                                                                        {% elif 'has access key older than 90 days' in issue_text %}
+                                                                            Rotate the key by creating a new access key, test it, and then disable and delete the old key. Set up a key rotation policy.
+                                                                        {% elif 'access key older than 90 days' in issue_text %}
+                                                                            Create new access keys, test functionality, then deactivate and delete old keys. Implement automated rotation policies.
+                                                                        {% elif 'has no iam tags' in issue_text %}
+                                                                            Add meaningful tags (like Owner, Department) via AWS Console > IAM > Users > [User] > "Tags".
+                                                                        {% elif 'no iam tags' in issue_text %}
+                                                                            Add descriptive tags (Owner, Purpose, Environment) in the IAM console for better resource management and compliance.
+                                                                        {% elif 'not encrypted' in issue_text %}
+                                                                            Enable encryption using SSE-S3, SSE-KMS, or SSE-C depending on your security requirements. Configure default encryption settings.
+                                                                        {% elif 'unattached' in issue_text %}
+                                                                            Review unattached resources and either attach them to instances or create snapshots before deletion to reduce costs.
+                                                                        {% elif 'snapshot' in issue_text %}
+                                                                            Review snapshot permissions, enable encryption, and delete unnecessary snapshots. Ensure snapshots are not shared publicly.
+                                                                        {% else %}
+                                                                            No remediation available.
+                                                                        {% endif %}
+                                                                    </div>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endif %}
                     {% endfor %}
-                </ul>
-
+                </div>
             </div>
+        </div>
+
+        <div class="text-end mt-3">
+            <a href="{{ url_for('routes.export_pdf') }}" class="btn btn-outline-dark">📄 Download Report</a>
         </div>
         {% else %}
         {% if all_results is defined and all_results|length == 0 %}
@@ -114,13 +299,6 @@
         </div>
         {% endif %}
         {% endif %}
-        {% if all_results and all_results|length > 0 %}
-        <div class="text-end mt-3">
-            <a href="{{ url_for('routes.export_pdf') }}" class="btn btn-outline-dark">📄 Download Report</a>
-        </div>
-        {% endif %}
-
-
     </div>
 
     <script>
@@ -133,14 +311,11 @@
     <script>
         const data = JSON.parse(`{{ all_results | tojson | safe }}`);
         const counts = { Critical: 0, High: 0, Medium: 0, Low: 0 };
-
         data.forEach(item => {
             if (counts[item.severity] !== undefined) {
                 counts[item.severity]++;
             }
         });
-
-
         const ctx = document.getElementById('summaryChart').getContext('2d');
         new Chart(ctx, {
             type: 'doughnut',
@@ -166,7 +341,6 @@
         });
     </script>
     {% endif %}
-
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
