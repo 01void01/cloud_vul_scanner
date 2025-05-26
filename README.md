@@ -6,9 +6,8 @@ This is a Flask-based web application that scans various AWS services (S3, EC2, 
 
 ## 📸 Screenshot
 
-![Screenshot 2025-05-26 213905](https://github.com/user-attachments/assets/387d8500-6897-4a8c-a344-700402059a84)
 ![Screenshot 2025-05-26 213851](https://github.com/user-attachments/assets/0ed25b4a-0ddc-4188-9f7f-b38ad168d3ed)
-
+![Screenshot 2025-05-26 213905](https://github.com/user-attachments/assets/387d8500-6897-4a8c-a344-700402059a84)
 
 
 ## 🚀 Features
