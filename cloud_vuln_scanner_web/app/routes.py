@@ -96,7 +96,7 @@ def scan():
             flash("Invalid scan type selected.", "danger")
             return redirect(url_for('routes.dashboard'))
 
-        session['all_results'] = all_results  # 🆕 store results for export
+        session['all_results'] = all_results  # store results for export
 
         return render_template('dashboard.html',
                                s3_results=s3_results,
@@ -113,7 +113,7 @@ def scan():
         flash(f"Unexpected error: {str(e)}", "danger")
         return redirect(url_for('routes.dashboard'))
 
-# 🆕 Export PDF Route
+# Export PDF Route
 @routes_bp.route('/export-pdf')
 def export_pdf():
     if not session.get('all_results'):
