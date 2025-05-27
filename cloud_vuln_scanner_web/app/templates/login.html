@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login - AWS Vulnerability Scanner</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
+  <style>
+    body {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .login-container {
+      max-width: 400px;
+      width: 100%;
+    }
+    .card {
+      border: none;
+      border-radius: 15px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    }
+    .card-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border-radius: 15px 15px 0 0;
+      text-align: center;
+      padding: 2rem 1rem 1rem;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border: none;
+      border-radius: 25px;
+      padding: 12px 30px;
+      font-weight: 600;
+      transition: all 0.3s ease;
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    }
+    .form-control {
+      border-radius: 25px;
+      padding: 12px 20px;
+      border: 1px solid #ddd;
+      transition: border-color 0.3s;
+    }
+    .form-control:focus {
+      border-color: #667eea;
+      box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    }
+    .alert {
+      border-radius: 10px;
+    }
+
+    /* Eye icon container styling */
+    .input-group .input-group-text {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-left: none;
+      border-radius: 0 25px 25px 0;
+      cursor: pointer;
+      padding: 0 1rem;
+    }
+
+    .input-group .form-control {
+      border-radius: 25px 0 0 25px;
+      border-right: none;
+    }
+
+    .input-group .input-group-text i {
+      color: #888;
+    }
+  </style>
+</head>
+<body>
+  <div class="container login-container">
+    <div class="card">
+      <div class="card-header">
+        <h3><i class="fas fa-shield-alt"></i> AWS Vulnerability Scanner</h3>
+        <p class="mb-0">Secure Login Portal</p>
+      </div>
+      <div class="card-body p-4">
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        <!-- Login Form -->
+        <form method="POST" action="{{ url_for('login') }}">
+          <div class="mb-3">
+            <label for="username" class="form-label">
+              <i class="fas fa-user"></i> Username
+            </label>
+            <input type="text" 
+                   class="form-control" 
+                   id="username" 
+                   name="username" 
+                   placeholder="Enter your username"
+                   required 
+                   minlength="4" 
+                   maxlength="20" />
+          </div>
+
+          <div class="mb-3">
+            <label for="password" class="form-label">
+              <i class="fas fa-lock"></i> Password
+            </label>
+            <div class="input-group">
+              <input type="password" 
+                     class="form-control" 
+                     id="password" 
+                     name="password" 
+                     placeholder="Enter your password"
+                     required 
+                     minlength="4" 
+                     maxlength="20" />
+              <span class="input-group-text" id="togglePassword">
+                <i class="fas fa-eye"></i>
+              </span>
+            </div>
+          </div>
+
+          <div class="mb-3 form-check">
+            <input type="checkbox" class="form-check-input" id="remember" name="remember">
+            <label class="form-check-label" for="remember">Remember me</label>
+          </div>
+
+          <div class="d-grid">
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-sign-in-alt"></i> Sign In
+            </button>
+          </div>
+        </form>
+
+        <hr class="my-4" />
+
+        <div class="text-center">
+          <p class="mb-0">Don't have an account?</p>
+          <a href="{{ url_for('register') }}" class="btn btn-outline-primary btn-sm mt-2">
+            <i class="fas fa-user-plus"></i> Create Account
+          </a>
+        </div>
+      </div>
+      <div class="card-footer text-center bg-light">
+        <small class="text-muted">
+          <i class="fas fa-info-circle"></i>
+          Default: admin/admin123 or scanner/scan123
+        </small>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // Toggle password visibility
+    const togglePassword = document.querySelector("#togglePassword");
+    const passwordInput = document.querySelector("#password");
+
+    togglePassword.addEventListener("click", function () {
+      const type = passwordInput.getAttribute("type") === "password" ? "text" : "password";
+      passwordInput.setAttribute("type", type);
+      this.querySelector("i").classList.toggle("fa-eye");
+      this.querySelector("i").classList.toggle("fa-eye-slash");
+    });
+  </script>
+</body>
+</html>
